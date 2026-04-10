@@ -1,0 +1,71 @@
+import type { ComponentProps } from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
+
+import { colors } from '../constants/colors';
+import { radii, spacing } from '../constants/spacing';
+import { typeScale } from '../constants/typography';
+
+type PrimaryButtonProps = {
+  label: string;
+  variant?: 'primary' | 'secondary';
+} & Omit<ComponentProps<typeof Pressable>, 'style'>;
+
+export function PrimaryButton({
+  label,
+  variant = 'primary',
+  disabled,
+  ...pressableProps
+}: PrimaryButtonProps) {
+  const isPrimary = variant === 'primary';
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.base,
+        isPrimary ? styles.primary : styles.secondary,
+        disabled && styles.disabled,
+        pressed && !disabled && (isPrimary ? styles.primaryPressed : styles.secondaryPressed),
+      ]}
+      {...pressableProps}
+    >
+      <Text style={[styles.label, !isPrimary && styles.secondaryLabel]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  base: {
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.lg,
+  },
+  primary: {
+    backgroundColor: colors.primary,
+  },
+  primaryPressed: {
+    backgroundColor: colors.primaryPressed,
+  },
+  secondary: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  secondaryPressed: {
+    backgroundColor: colors.surfaceElevated,
+  },
+  disabled: {
+    opacity: 0.6,
+  },
+  label: {
+    color: colors.black,
+    fontSize: typeScale.body,
+    fontWeight: '700',
+  },
+  secondaryLabel: {
+    color: colors.text,
+  },
+});
