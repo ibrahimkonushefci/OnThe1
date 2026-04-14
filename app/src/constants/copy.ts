@@ -3,9 +3,9 @@ export const appCopy = {
   detect: {
     title: 'Detect',
     hero: 'Hear the 1',
-    body: 'Place your phone near the music and tap Start Listening.',
+    body: 'Detect Salsa or Bachata and get a cue for when to start.',
     helper:
-      'Best results come from a steady section of the song with clear rhythm.',
+      'Best results come from a steady part of the song with a clear beat.',
   },
   practice: {
     title: 'Practice',

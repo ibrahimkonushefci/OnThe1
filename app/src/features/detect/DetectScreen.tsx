@@ -1,15 +1,14 @@
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ScreenLayout } from '../../components/ScreenLayout';
-import { SurfaceCard } from '../../components/SurfaceCard';
 import { ToggleRow } from '../../components/ToggleRow';
 import { appCopy } from '../../constants/copy';
 import { colors } from '../../constants/colors';
 import { radii, spacing } from '../../constants/spacing';
-import { typeScale } from '../../constants/typography';
+import { lineHeights, typeScale } from '../../constants/typography';
 
 export function DetectScreen() {
   const [beepCue, setBeepCue] = useState(true);
@@ -17,17 +16,19 @@ export function DetectScreen() {
   const [continuousCount, setContinuousCount] = useState(true);
 
   return (
-    <ScreenLayout>
+    <ScreenLayout showAmbientGlow={false}>
       <View style={styles.headerRow}>
-        <Text style={styles.screenTitle}>{appCopy.detect.title}</Text>
-        <View style={styles.iconButton}>
+        <Text style={styles.headerTitle}>{appCopy.detect.title}</Text>
+        <Pressable accessibilityRole="button" onPress={() => {}} style={styles.settingsButton}>
           <Feather color={colors.textMuted} name="settings" size={18} />
-        </View>
+        </Pressable>
       </View>
 
       <View style={styles.heroWrap}>
         <View style={styles.heroOrb}>
-          <Feather color={colors.primary} name="mic" size={46} />
+          <View style={styles.heroInnerOrb}>
+            <Feather color={colors.primary} name="mic" size={52} />
+          </View>
         </View>
         <Text style={styles.heroTitle}>{appCopy.detect.hero}</Text>
         <Text style={styles.heroBody}>{appCopy.detect.body}</Text>
@@ -51,11 +52,6 @@ export function DetectScreen() {
       <PrimaryButton label="Start Listening" onPress={() => {}} />
 
       <Text style={styles.helperText}>{appCopy.detect.helper}</Text>
-
-      <SurfaceCard
-        body="Phase 1 placeholder only. Live listening, permissions, and cue timing will be added in later phases."
-        title="Detection flow pending"
-      />
     </ScreenLayout>
   );
 }
@@ -65,58 +61,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: spacing.xxl,
   },
-  screenTitle: {
+  headerTitle: {
     color: colors.text,
-    fontSize: 28,
+    fontSize: typeScale.title,
     fontWeight: '700',
   },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.pill,
+  settingsButton: {
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
   heroWrap: {
     alignItems: 'center',
     gap: spacing.lg,
-    paddingTop: spacing.sm,
+    marginBottom: spacing.xxl,
   },
   heroOrb: {
-    width: 136,
-    height: 136,
+    width: 112,
+    height: 112,
     borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#284465',
     backgroundColor: '#1A2844',
+  },
+  heroInnerOrb: {
+    width: 80,
+    height: 80,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2C355B',
   },
   heroTitle: {
     color: colors.text,
-    fontSize: typeScale.hero,
+    fontSize: 42,
     fontWeight: '800',
     textAlign: 'center',
   },
   heroBody: {
     color: colors.textMuted,
-    fontSize: typeScale.bodyLarge,
-    lineHeight: 28,
+    fontSize: 17,
+    lineHeight: 30,
     textAlign: 'center',
-    maxWidth: 280,
+    maxWidth: 300,
   },
   section: {
     gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   helperText: {
     color: colors.textMuted,
-    fontSize: typeScale.body,
+    fontSize: 15,
     lineHeight: 24,
     textAlign: 'center',
     paddingHorizontal: spacing.lg,
+    marginTop: spacing.sm,
   },
 });
