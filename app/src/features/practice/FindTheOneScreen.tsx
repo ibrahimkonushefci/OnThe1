@@ -11,20 +11,24 @@ import { colors } from '../../constants/colors';
 import { radii, spacing } from '../../constants/spacing';
 import { typeScale } from '../../constants/typography';
 import type { PracticeStackParamList } from '../../navigation/PracticeStack';
-import type { PracticeTrack } from '../../data/practiceTracks';
-import type { FindTheOnePreviewState } from './practice.types';
-import { useState } from 'react';
+import { useFindTheOneController } from './useFindTheOneController';
 
 type Props = NativeStackScreenProps<PracticeStackParamList, 'FindTheOne'>;
 
 export function FindTheOneScreen({ navigation }: Props) {
-  const [previewState, setPreviewState] = useState<FindTheOnePreviewState>('list');
-  const [selectedTrack, setSelectedTrack] = useState<PracticeTrack | null>(null);
-
-  const startTrack = (track: PracticeTrack) => {
-    setSelectedTrack(track);
-    setPreviewState('active');
-  };
+  const {
+    backToList,
+    finishSession,
+    handleTap,
+    latestResult,
+    metrics,
+    previewState,
+    progress,
+    selectedTrack,
+    startTrack,
+    stats,
+    tryAgain,
+  } = useFindTheOneController();
 
   return (
     <ScreenLayout showAmbientGlow={false}>
@@ -54,33 +58,37 @@ export function FindTheOneScreen({ navigation }: Props) {
       {previewState === 'active' && selectedTrack ? (
         <View style={styles.activeWrap}>
           <AppHeader
-            onBackPress={() => setPreviewState('list')}
+            onBackPress={backToList}
             plainBackButton
             title={selectedTrack.title}
           />
 
           <View style={styles.progressTrack}>
-            <View style={styles.progressFill} />
+            <View style={[styles.progressFill, { width: `${Math.max(progress * 100, 3)}%` }]} />
           </View>
 
           <View style={styles.metricsCard}>
             <View style={styles.metricBlock}>
               <Text style={styles.metricLabel}>Taps</Text>
-              <Text style={styles.metricValue}>1</Text>
+              <Text style={styles.metricValue}>{metrics.taps}</Text>
             </View>
             <View style={styles.metricBlock}>
               <Text style={styles.metricLabel}>Hit Rate</Text>
-              <Text style={[styles.metricValue, styles.metricValueSuccess]}>100%</Text>
+              <Text style={[styles.metricValue, styles.metricValueSuccess]}>
+                {metrics.hitRateLabel}
+              </Text>
             </View>
             <View style={styles.metricBlock}>
               <Text style={styles.metricLabel}>Perfect</Text>
-              <Text style={[styles.metricValue, styles.metricValuePrimary]}>1</Text>
+              <Text style={[styles.metricValue, styles.metricValuePrimary]}>
+                {metrics.perfect}
+              </Text>
             </View>
           </View>
 
           <Pressable
             accessibilityRole="button"
-            onPress={() => setPreviewState('complete')}
+            onPress={handleTap}
             style={styles.tapTargetOuter}
           >
             <View style={styles.tapTargetInner}>
@@ -88,9 +96,13 @@ export function FindTheOneScreen({ navigation }: Props) {
             </View>
           </Pressable>
 
+          <Text style={styles.feedbackText}>
+            {latestResult ? formatLatestResult(latestResult) : 'Wait for the beat, then tap.'}
+          </Text>
+
           <Pressable
             accessibilityRole="button"
-            onPress={() => setPreviewState('complete')}
+            onPress={finishSession}
             style={styles.pauseButton}
           >
             <Feather color={colors.textMuted} name="pause" size={18} />
@@ -111,19 +123,23 @@ export function FindTheOneScreen({ navigation }: Props) {
             <View style={styles.summaryGrid}>
               <View style={[styles.summaryTile, styles.summaryTileBlue]}>
                 <Text style={styles.summaryTileLabel}>Perfect Taps</Text>
-                <Text style={[styles.summaryTileValue, styles.summaryTileValueBlue]}>1</Text>
+                <Text style={[styles.summaryTileValue, styles.summaryTileValueBlue]}>
+                  {stats.perfect}
+                </Text>
               </View>
               <View style={[styles.summaryTile, styles.summaryTileGreen]}>
                 <Text style={styles.summaryTileLabel}>Good Taps</Text>
-                <Text style={[styles.summaryTileValue, styles.summaryTileValueGreen]}>0</Text>
+                <Text style={[styles.summaryTileValue, styles.summaryTileValueGreen]}>
+                  {stats.good}
+                </Text>
               </View>
               <View style={styles.summaryTile}>
                 <Text style={styles.summaryTileLabel}>Early Taps</Text>
-                <Text style={styles.summaryTileValue}>0</Text>
+                <Text style={styles.summaryTileValue}>{stats.early}</Text>
               </View>
               <View style={styles.summaryTile}>
                 <Text style={styles.summaryTileLabel}>Late Taps</Text>
-                <Text style={styles.summaryTileValue}>0</Text>
+                <Text style={styles.summaryTileValue}>{stats.late}</Text>
               </View>
             </View>
 
@@ -131,26 +147,27 @@ export function FindTheOneScreen({ navigation }: Props) {
 
             <View style={styles.summaryRow}>
               <Text style={styles.summaryRowLabel}>Hit Rate</Text>
-              <Text style={styles.summaryRowValue}>100.0%</Text>
+              <Text style={styles.summaryRowValue}>
+                {stats.totalAttempts === 0 ? '--' : `${stats.hitRate.toFixed(1)}%`}
+              </Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryRowLabel}>Average Offset</Text>
-              <Text style={styles.summaryRowValue}>13ms</Text>
+              <Text style={styles.summaryRowValue}>
+                {stats.totalAttempts === 0 ? '--' : `${Math.round(Math.abs(stats.averageOffsetMs))}ms`}
+              </Text>
             </View>
           </View>
 
           <PrimaryButton
             icon="rotate-ccw"
             label="Try Again"
-            onPress={() => setPreviewState('active')}
+            onPress={tryAgain}
           />
           <PrimaryButton
             icon="home"
             label="Back to Practice"
-            onPress={() => {
-              setPreviewState('list');
-              setSelectedTrack(null);
-            }}
+            onPress={backToList}
             variant="secondary"
           />
         </View>
@@ -252,6 +269,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     marginTop: spacing.xxxl,
   },
+  feedbackText: {
+    color: colors.textMuted,
+    fontSize: typeScale.body,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
   completeHero: {
     alignItems: 'center',
     gap: spacing.lg,
@@ -342,3 +366,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+function formatLatestResult(result: 'perfect' | 'good' | 'early' | 'late') {
+  switch (result) {
+    case 'perfect':
+      return 'Perfect timing';
+    case 'good':
+      return 'Good timing';
+    case 'early':
+      return 'A little early';
+    case 'late':
+      return 'A little late';
+  }
+}

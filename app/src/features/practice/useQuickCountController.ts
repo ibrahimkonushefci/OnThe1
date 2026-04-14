@@ -8,6 +8,10 @@ import type { DanceStyle, QuickCountPreviewState } from './practice.types';
 const salsaSequence = ['1', '2', '3', null, '5', '6', '7', null] as const;
 const salsaDisplay = ['1', '2', '3', '5', '6', '7'] as const;
 const bachataSequence = ['1', '2', '3', 'Tap', '5', '6', '7', 'Tap'] as const;
+const defaultBpmByStyle: Record<DanceStyle, number> = {
+  Salsa: 100,
+  Bachata: 120,
+};
 
 const minTempo = 70;
 const maxTempo = 180;
@@ -16,10 +20,11 @@ export function useQuickCountController() {
   const [selectedStyle, setSelectedStyle] = useState<DanceStyle>('Salsa');
   const [beepCue, setBeepCue] = useState(true);
   const [vibrationCue, setVibrationCue] = useState(true);
-  const [bpm, setBpm] = useState(100);
+  const [bpmByStyle, setBpmByStyle] = useState<Record<DanceStyle, number>>(defaultBpmByStyle);
   const [previewState, setPreviewState] = useState<QuickCountPreviewState>('setup');
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bpm = bpmByStyle[selectedStyle];
 
   const sequence = useMemo(
     () => (selectedStyle === 'Salsa' ? salsaSequence : bachataSequence),
@@ -119,7 +124,12 @@ export function useQuickCountController() {
     previewState,
     selectedStyle,
     setBeepCue,
-    setBpm,
+    setBpm: useCallback((value: number) => {
+      setBpmByStyle((current) => ({
+        ...current,
+        [selectedStyle]: value,
+      }));
+    }, [selectedStyle]),
     setSelectedStyle,
     setVibrationCue,
     startCount,
