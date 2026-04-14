@@ -15,7 +15,6 @@ export function DetectScreen() {
   const {
     beepCue,
     continuousCount,
-    cyclePreviewState,
     listenAgain,
     openSettings,
     previewState,
@@ -36,7 +35,6 @@ export function DetectScreen() {
         <Text style={styles.headerTitle}>{appCopy.detect.title}</Text>
         <Pressable
           accessibilityRole="button"
-          onLongPress={cyclePreviewState}
           onPress={openSettings}
           style={styles.settingsButton}
         >
@@ -78,7 +76,7 @@ export function DetectScreen() {
           <ListeningHero />
           <Text style={styles.heroTitle}>Listening...</Text>
           <Text style={styles.heroBody}>
-            Trying to estimate dance style, BPM, and the 1.
+            Listening to the groove and estimating the next 1.
           </Text>
           <Pressable onPress={stopListening} style={styles.smallSecondaryButton}>
             <Text style={styles.smallSecondaryButtonLabel}>Stop</Text>
@@ -130,7 +128,7 @@ export function DetectScreen() {
         <View style={styles.feedbackWrap}>
           <Text style={styles.feedbackTitle}>Could not read the rhythm</Text>
           <Text style={styles.feedbackBody}>
-            Try again when the music is louder or steadier.
+            Try again when the music is louder, steadier, and less noisy.
           </Text>
           <View style={styles.feedbackButtons}>
             <PrimaryButton label="Try Again" onPress={tryAgain} />

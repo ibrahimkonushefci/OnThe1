@@ -1,35 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PracticeTrack } from '../../data/practiceTracks';
-import { playCueBeep, stopAudioSession } from '../../services/audioService';
-import { triggerCueHaptic } from '../../services/hapticsService';
-import { bpmToIntervalMs } from '../../utils/timing';
+import {
+  getPracticePlaybackPositionMs,
+  isPracticeTrackPlaying,
+  playPracticeTrack,
+  stopAudioSession,
+} from '../../services/audioService';
+import {
+  calculateSessionStats,
+  emptySessionStats,
+  getActiveTargetIndex,
+  scoreTapAtTime,
+  type SessionStats,
+  type TapEvaluation,
+  type TapResultType,
+} from './findTheOne.helpers';
 import type { FindTheOnePreviewState } from './practice.types';
 
-type TapResultType = 'perfect' | 'good' | 'early' | 'late';
-
-type SessionStats = {
-  totalAttempts: number;
-  perfect: number;
-  good: number;
-  early: number;
-  late: number;
-  hitRate: number;
-  averageOffsetMs: number;
-};
-
-const perfectWindowMs = 100;
-const goodWindowMs = 220;
-
-const emptyStats: SessionStats = {
-  totalAttempts: 0,
-  perfect: 0,
-  good: 0,
-  early: 0,
-  late: 0,
-  hitRate: 0,
-  averageOffsetMs: 0,
-};
+const progressIntervalMs = 40;
 
 export function useFindTheOneController() {
   const [previewState, setPreviewState] = useState<FindTheOnePreviewState>('list');
@@ -37,22 +26,22 @@ export function useFindTheOneController() {
   const [progress, setProgress] = useState(0);
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [latestResult, setLatestResult] = useState<TapResultType | null>(null);
-  const [stats, setStats] = useState<SessionStats>(emptyStats);
+  const [stats, setStats] = useState<SessionStats>(emptySessionStats);
 
-  const startTimestampRef = useRef<number | null>(null);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const targetTimesRef = useRef<number[]>([]);
+  const evaluationsRef = useRef<TapEvaluation[]>([]);
 
-  const activeTargetTime = targetTimesRef.current[currentTargetIndex] ?? null;
+  const activeTargetTime =
+    selectedTrack?.targetBeatTimestampsMs[currentTargetIndex] ?? null;
 
   const metrics = useMemo(
     () => ({
-      taps: stats.totalAttempts,
-      hitRateLabel: stats.totalAttempts === 0 ? '--' : `${Math.round(stats.hitRate)}%`,
-      perfect: stats.perfect,
       averageOffsetLabel:
         stats.totalAttempts === 0 ? '--' : `${Math.round(Math.abs(stats.averageOffsetMs))}ms`,
+      hitRateLabel: stats.totalAttempts === 0 ? '--' : `${Math.round(stats.hitRate)}%`,
+      perfect: stats.perfect,
+      taps: stats.totalAttempts,
     }),
     [stats],
   );
@@ -73,10 +62,16 @@ export function useFindTheOneController() {
     setProgress(0);
     setCurrentTargetIndex(0);
     setLatestResult(null);
-    setStats(emptyStats);
-    startTimestampRef.current = null;
-    targetTimesRef.current = [];
+    setStats(emptySessionStats);
+    evaluationsRef.current = [];
   }, []);
+
+  const completeSession = useCallback(() => {
+    resetTimers();
+    void stopAudioSession();
+    setProgress(1);
+    setPreviewState('complete');
+  }, [resetTimers]);
 
   useEffect(() => {
     return () => {
@@ -85,6 +80,25 @@ export function useFindTheOneController() {
     };
   }, [resetTimers]);
 
+  const syncSessionState = useCallback(
+    (track: PracticeTrack) => {
+      const playbackPositionMs = getPracticePlaybackPositionMs();
+      setProgress(Math.min(1, playbackPositionMs / track.durationMs));
+      setCurrentTargetIndex(
+        getActiveTargetIndex(
+          playbackPositionMs,
+          track.targetBeatTimestampsMs,
+          track.beatIntervalMs,
+        ),
+      );
+
+      if (!isPracticeTrackPlaying() && playbackPositionMs > 0.92 * track.durationMs) {
+        completeSession();
+      }
+    },
+    [completeSession],
+  );
+
   const startTrack = useCallback(
     async (track: PracticeTrack) => {
       resetTimers();
@@ -92,47 +106,23 @@ export function useFindTheOneController() {
       setSelectedTrack(track);
       setPreviewState('active');
 
-      const beatIntervalMs = bpmToIntervalMs(track.bpm);
-      const targetTimes = Array.from({ length: track.targetBeats }, (_, index) => {
-        return track.beatLeadInMs + index * beatIntervalMs;
-      });
-
-      targetTimesRef.current = targetTimes;
-      startTimestampRef.current = Date.now();
-
-      try {
-        await playCueBeep(true);
-      } catch {
-        // Ignore audio issues and keep the trainer running.
-      }
-
-      const sessionDurationMs = targetTimes[targetTimes.length - 1] + beatIntervalMs;
+      await playPracticeTrack(track.assetSource);
+      syncSessionState(track);
 
       progressIntervalRef.current = setInterval(() => {
-        if (!startTimestampRef.current) {
-          return;
-        }
-
-        const elapsed = Date.now() - startTimestampRef.current;
-        const nextTargetIndex = targetTimes.findIndex((time) => elapsed < time);
-        setCurrentTargetIndex(nextTargetIndex === -1 ? track.targetBeats - 1 : nextTargetIndex);
-        setProgress(Math.min(1, elapsed / sessionDurationMs));
-      }, 50);
+        syncSessionState(track);
+      }, progressIntervalMs);
 
       completionTimeoutRef.current = setTimeout(() => {
-        resetTimers();
-        setProgress(1);
-        setPreviewState('complete');
-      }, sessionDurationMs);
+        completeSession();
+      }, track.durationMs + 120);
     },
-    [resetSessionState, resetTimers],
+    [completeSession, resetSessionState, resetTimers, syncSessionState],
   );
 
   const finishSession = useCallback(() => {
-    resetTimers();
-    setProgress(1);
-    setPreviewState('complete');
-  }, [resetTimers]);
+    completeSession();
+  }, [completeSession]);
 
   const backToList = useCallback(() => {
     resetTimers();
@@ -150,52 +140,20 @@ export function useFindTheOneController() {
     void startTrack(selectedTrack);
   }, [selectedTrack, startTrack]);
 
-  const handleTap = useCallback(async () => {
-    if (previewState !== 'active' || !startTimestampRef.current || activeTargetTime == null) {
+  const handleTap = useCallback(() => {
+    if (previewState !== 'active' || !selectedTrack || activeTargetTime == null) {
       return;
     }
 
-    const elapsed = Date.now() - startTimestampRef.current;
-    const offset = elapsed - activeTargetTime;
-    const absoluteOffset = Math.abs(offset);
+    const tapTimestampMs = getPracticePlaybackPositionMs();
+    const evaluation = scoreTapAtTime(tapTimestampMs, activeTargetTime);
+    evaluationsRef.current = [...evaluationsRef.current, evaluation];
 
-    let result: TapResultType;
-    if (absoluteOffset <= perfectWindowMs) {
-      result = 'perfect';
-    } else if (absoluteOffset <= goodWindowMs) {
-      result = 'good';
-    } else {
-      result = offset < 0 ? 'early' : 'late';
-    }
+    setLatestResult(evaluation.result);
 
-    setLatestResult(result);
-
-    setStats((current) => {
-      const next = {
-        ...current,
-        totalAttempts: current.totalAttempts + 1,
-        perfect: current.perfect + (result === 'perfect' ? 1 : 0),
-        good: current.good + (result === 'good' ? 1 : 0),
-        early: current.early + (result === 'early' ? 1 : 0),
-        late: current.late + (result === 'late' ? 1 : 0),
-      };
-
-      const hitCount = next.perfect + next.good;
-      const totalOffset = current.averageOffsetMs * current.totalAttempts + offset;
-
-      return {
-        ...next,
-        hitRate: next.totalAttempts === 0 ? 0 : (hitCount / next.totalAttempts) * 100,
-        averageOffsetMs: totalOffset / next.totalAttempts,
-      };
-    });
-
-    try {
-      await triggerCueHaptic(result === 'perfect' ? 'accent' : 'tick');
-    } catch {
-      return;
-    }
-  }, [activeTargetTime, previewState]);
+    const nextStats = calculateSessionStats(evaluationsRef.current);
+    setStats(nextStats);
+  }, [activeTargetTime, previewState, selectedTrack]);
 
   return {
     backToList,

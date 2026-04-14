@@ -1,15 +1,22 @@
+import { analyzeMeteringWindow } from '../features/detect/detect.helpers';
+import { captureMeteringWindow } from '../services/audioService';
+
 export type DetectionResult = {
-  danceStyle: 'salsa' | 'bachata';
   bpm: number;
+  confidence: number;
+  danceStyle: 'salsa' | 'bachata';
   firstBeatOffsetMs: number;
-  confidence?: number;
 };
 
+const captureDurationMs = 7200;
+
 export async function detectFromLiveAudio(): Promise<DetectionResult> {
-  return {
-    danceStyle: 'salsa',
-    bpm: 96,
-    firstBeatOffsetMs: 1200,
-    confidence: 0.72,
-  };
+  const samples = await captureMeteringWindow(captureDurationMs);
+  const detection = analyzeMeteringWindow(samples);
+
+  if (!detection) {
+    throw new Error('Could not confidently detect the rhythm.');
+  }
+
+  return detection;
 }

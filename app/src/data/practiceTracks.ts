@@ -1,59 +1,107 @@
+import { bpmToIntervalMs } from '../utils/timing';
+import { buildTargetBeatMap } from '../features/practice/findTheOne.helpers';
+
 export type PracticeTrack = {
-  id: string;
-  title: string;
-  style: 'Salsa' | 'Bachata';
-  bpm: number;
+  assetSource: number;
+  beatIntervalMs: number;
   beatLeadInMs: number;
-  targetBeats: number;
+  bpm: number;
+  durationMs: number;
+  id: string;
+  style: 'Salsa' | 'Bachata';
+  targetBeatTimestampsMs: number[];
+  title: string;
 };
 
+type PracticeTrackConfig = {
+  assetSource: number;
+  beatLeadInMs: number;
+  bpm: number;
+  id: string;
+  style: 'Salsa' | 'Bachata';
+  targetBeatCount: number;
+  title: string;
+  trailerMs?: number;
+};
+
+function createPracticeTrack(config: PracticeTrackConfig): PracticeTrack {
+  const beatIntervalMs = bpmToIntervalMs(config.bpm);
+  const targetBeatTimestampsMs = buildTargetBeatMap(
+    config.beatLeadInMs,
+    beatIntervalMs,
+    config.targetBeatCount,
+  );
+  const trailerMs = config.trailerMs ?? 1600;
+
+  return {
+    ...config,
+    beatIntervalMs,
+    durationMs: Math.round(
+      config.beatLeadInMs + config.targetBeatCount * 8 * beatIntervalMs + trailerMs,
+    ),
+    targetBeatTimestampsMs,
+  };
+}
+
 export const practiceTracks: PracticeTrack[] = [
-  {
-    id: 'salsa-basic-1',
-    title: 'Salsa Basic 1',
-    style: 'Salsa',
+  createPracticeTrack({
+    assetSource: require('../../assets/practice/salsa-basic-1.wav'),
+    beatLeadInMs: 1600,
     bpm: 85,
-    beatLeadInMs: 1200,
-    targetBeats: 8,
-  },
-  {
-    id: 'salsa-basic-2',
-    title: 'Salsa Basic 2',
+    id: 'salsa-basic-1',
     style: 'Salsa',
+    targetBeatCount: 5,
+    trailerMs: 2000,
+    title: 'Salsa Basic 1',
+  }),
+  createPracticeTrack({
+    assetSource: require('../../assets/practice/salsa-basic-2.wav'),
+    beatLeadInMs: 1500,
     bpm: 92,
-    beatLeadInMs: 1200,
-    targetBeats: 8,
-  },
-  {
-    id: 'salsa-midtempo',
-    title: 'Salsa Midtempo',
+    id: 'salsa-basic-2',
     style: 'Salsa',
+    targetBeatCount: 5,
+    trailerMs: 2000,
+    title: 'Salsa Basic 2',
+  }),
+  createPracticeTrack({
+    assetSource: require('../../assets/practice/salsa-midtempo.wav'),
+    beatLeadInMs: 1450,
     bpm: 105,
-    beatLeadInMs: 1200,
-    targetBeats: 10,
-  },
-  {
-    id: 'bachata-basic-1',
-    title: 'Bachata Basic 1',
-    style: 'Bachata',
+    id: 'salsa-midtempo',
+    style: 'Salsa',
+    targetBeatCount: 6,
+    trailerMs: 2000,
+    title: 'Salsa Midtempo',
+  }),
+  createPracticeTrack({
+    assetSource: require('../../assets/practice/bachata-basic-1.wav'),
+    beatLeadInMs: 1400,
     bpm: 110,
-    beatLeadInMs: 1000,
-    targetBeats: 8,
-  },
-  {
-    id: 'bachata-basic-2',
-    title: 'Bachata Basic 2',
+    id: 'bachata-basic-1',
     style: 'Bachata',
+    targetBeatCount: 5,
+    trailerMs: 2000,
+    title: 'Bachata Basic 1',
+  }),
+  createPracticeTrack({
+    assetSource: require('../../assets/practice/bachata-basic-2.wav'),
+    beatLeadInMs: 1350,
     bpm: 118,
-    beatLeadInMs: 1000,
-    targetBeats: 8,
-  },
-  {
-    id: 'bachata-midtempo',
-    title: 'Bachata Midtempo',
+    id: 'bachata-basic-2',
     style: 'Bachata',
+    targetBeatCount: 5,
+    trailerMs: 2000,
+    title: 'Bachata Basic 2',
+  }),
+  createPracticeTrack({
+    assetSource: require('../../assets/practice/bachata-midtempo.wav'),
+    beatLeadInMs: 1300,
     bpm: 125,
-    beatLeadInMs: 1000,
-    targetBeats: 10,
-  },
+    id: 'bachata-midtempo',
+    style: 'Bachata',
+    targetBeatCount: 6,
+    trailerMs: 2000,
+    title: 'Bachata Midtempo',
+  }),
 ];

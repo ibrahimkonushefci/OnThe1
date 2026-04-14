@@ -5,9 +5,11 @@ export type DetectPreviewState =
   | 'permissionDenied'
   | 'failure';
 
-export type MockDetectionResult = {
+export type DetectResult = {
   danceStyle: 'Salsa' | 'Bachata';
   bpm: number;
+  firstBeatOffsetMs: number;
   cueReadyText: string;
   statusText: string;
+  confidence?: number;
 };
